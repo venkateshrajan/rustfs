@@ -17,22 +17,7 @@ struct Folder<'a> {
 
 impl fmt::Debug for Folder<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut res = write!(f, "{{ {:?}, children: {{", self.common_props.name);
-        if res.is_err() {
-            return res;
-        }
-
-        for item in self.children.iter() {
-            res = write!(f, "{}, ", item.to_string());
-            if res.is_err() {
-                return res;
-            }
-        }
-        res = write!(f, "}} }}");
-        if res.is_err() {
-            return res;
-        }
-        res
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -88,7 +73,12 @@ impl FileSystemEntity for Folder<'_> {
     }
 
     fn to_string(&self) -> String{
-        String::from(format!("{:?}", self.common_props.name))
+        let mut s = format!("{{ {}:", self.common_props.name);
+        for item in &self.children {
+            s.push_str(&format!(" {}, ", item.to_string()));
+        }
+        s.push_str(&format!(" }}"));
+        s
     }
 
     fn name(&self) -> &str {
@@ -118,6 +108,33 @@ fn main() {
         }
     };
     root.add(&mut f);
+
+    let mut fol2 = Folder {
+        common_props: FileSystemEntityProps {
+            name: String::from("folder2/"),
+        },
+        children: Vec::new(),
+    };
+    let mut f2 = File {
+        common_props: FileSystemEntityProps {
+            name: String::from("file2"),
+        }
+    };
+    fol2.add(&mut f2);
+    root.add(&mut fol2);
+
+    let mut f3 = File {
+        common_props: FileSystemEntityProps {
+            name: String::from("file3"),
+        }
+    };
+    let mut fol3 = Folder {
+        common_props: FileSystemEntityProps {
+            name: String::from("folder3/"),
+        },
+        children: vec![&mut f3],
+    };
+    root.add(&mut fol3);
     println!("root: {root:#?}");
 
     if let Some(x) = root.get("file1".to_string()) {
