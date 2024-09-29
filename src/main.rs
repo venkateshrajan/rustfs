@@ -16,10 +16,9 @@ struct Folder<'a> {
     children: Vec<&'a mut dyn FileSystemEntity>,
 }
 
-impl fmt::Debug for Folder<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
+struct SymbolicLink<'a> {
+    common_props: FileSystemEntityProps,
+    link: &'a dyn FileSystemEntity,
 }
 
 trait FileSystemEntity {
@@ -142,6 +141,56 @@ impl FileSystemEntity for Folder<'_> {
     }
 }
 
+impl FileSystemEntity for SymbolicLink<'_> {
+    fn get(&self, name: String) -> Option<&dyn FileSystemEntity> {
+        if self.common_props.name == name {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
+    fn get_mut(&mut self, name: String) -> Option<&mut dyn FileSystemEntity> {
+        if self.common_props.name == name {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
+    fn delete(&mut self) {
+        println!("deleted symbolic link {} to the file {}", 
+                 self.common_props.name, self.link.name());
+    }
+
+    fn delete_id(&mut self, _: usize) -> Result<usize, String> {
+        Err("Unsupported!".to_string())
+    }
+
+    fn to_string(&self) -> String{
+        String::from(
+            format!("{:?} -> {:?}", 
+                    self.common_props.name, 
+                    self.link.name()
+                )
+        )
+    }
+
+    fn name(&self) -> &str {
+        &self.common_props.name
+    }
+
+    fn id(&self) -> usize {
+        self.common_props.id
+    }
+}
+
+impl fmt::Debug for Folder<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
 impl<'a> Folder<'a> {
     fn add<T>(&mut self, f: &'a mut T)
         where T: FileSystemEntity 
@@ -212,6 +261,7 @@ fn main() {
     // } else {
     //     println!("Unable to find file1!");
     // }
+    // println!("root: {root:#?}");
 
     // Test case #2
     // root.delete_id(6).unwrap();
@@ -232,14 +282,25 @@ fn main() {
     // println!("root: {root:#?}");
 
     // Test case #4
-    if let Some(x) = root.get_mut("folder3/".to_string()) {
-        x.delete_id(5).unwrap();
-        if let Some(y) = x.get("file3".to_string()) {
-            println!("Found file3: {}", y.to_string());
-        } else {
-            println!("Unable to find file3!");
-        }
-    }
-    println!("root: {root:#?}");
+    // if let Some(x) = root.get_mut("folder3/".to_string()) {
+    //     x.delete_id(5).unwrap();
+    //     if let Some(y) = x.get("file3".to_string()) {
+    //         println!("Found file3: {}", y.to_string());
+    //     } else {
+    //         println!("Unable to find file3!");
+    //     }
+    // }
+    // println!("root: {root:#?}");
+
+    // // Test case #5 (not completed yet)
+    // let mut s1 = SymbolicLink {
+    //     common_props: FileSystemEntityProps {
+    //         name: String::from("link1"),
+    //         id: 7,
+    //     },
+    //     link: root.get("file1".to_string()).unwrap(),
+    // };
+    // root.add(&mut s1);
+    // println!("root: {root:#?}");
 } 
 
