@@ -1,38 +1,38 @@
 use std::fmt;
 
 #[derive(Debug)]
-struct FileSystemEntityProps {
-    name: String,
+struct FileSystemEntityProps<'a> {
+    name: &'a str,
     id: usize,
 }
 
 #[derive(Debug)]
-struct File {
-    common_props: FileSystemEntityProps
+struct File<'a> {
+    common_props: FileSystemEntityProps<'a>
 }
 
 struct Folder<'a> {
-    common_props: FileSystemEntityProps,
+    common_props: FileSystemEntityProps<'a>,
     children: Vec<&'a mut dyn FileSystemEntity>,
 }
 
 struct SymbolicLink<'a> {
-    common_props: FileSystemEntityProps,
+    common_props: FileSystemEntityProps<'a>,
     link: &'a dyn FileSystemEntity,
 }
 
 trait FileSystemEntity {
-    fn get(&self, name: String) -> Option<&dyn FileSystemEntity>;
-    fn get_mut(&mut self, name: String) -> Option<&mut dyn FileSystemEntity>;
+    fn get(&self, name: &str) -> Option<&dyn FileSystemEntity>;
+    fn get_mut(&mut self, name: &str) -> Option<&mut dyn FileSystemEntity>;
     fn delete(&mut self);
-    fn delete_id(&mut self, id: usize) -> Result<usize, String>;
+    fn delete_id(&mut self, id: usize) -> Result<usize, &str>;
     fn to_string(&self) -> String;
     fn name(&self) -> &str;
     fn id(&self) -> usize;
 } 
 
-impl FileSystemEntity for File {
-    fn get(&self, name: String) -> Option<&dyn FileSystemEntity> {
+impl FileSystemEntity for File<'_> {
+    fn get(&self, name: &str) -> Option<&dyn FileSystemEntity> {
         if self.common_props.name == name {
             Some(self)
         } else {
@@ -40,7 +40,7 @@ impl FileSystemEntity for File {
         }
     }
 
-    fn get_mut(&mut self, name: String) -> Option<&mut dyn FileSystemEntity> {
+    fn get_mut(&mut self, name: &str) -> Option<&mut dyn FileSystemEntity> {
         if self.common_props.name == name {
             Some(self)
         } else {
@@ -52,16 +52,16 @@ impl FileSystemEntity for File {
         println!("deleted file {}", self.common_props.name);
     }
 
-    fn delete_id(&mut self, _: usize) -> Result<usize, String> {
-        Err("Unsupported!".to_string())
+    fn delete_id(&mut self, _: usize) -> Result<usize, &str> {
+        Err("Unsupported!")
     }
 
-    fn to_string(&self) -> String{
-        String::from(format!("{:?}", self.common_props.name))
+    fn to_string(&self) -> String {
+        String::from(self.common_props.name)
     }
 
     fn name(&self) -> &str {
-        &self.common_props.name
+        self.common_props.name
     }
 
     fn id(&self) -> usize {
@@ -70,7 +70,7 @@ impl FileSystemEntity for File {
 }
 
 impl FileSystemEntity for Folder<'_> {
-    fn get(&self, name: String) -> Option<&dyn FileSystemEntity> {
+    fn get(&self, name: &str) -> Option<&dyn FileSystemEntity> {
         if self.common_props.name == name {
             Some(self)
         } else {
@@ -83,7 +83,7 @@ impl FileSystemEntity for Folder<'_> {
         }
     }
 
-    fn get_mut(&mut self, name: String) -> Option<&mut dyn FileSystemEntity> {
+    fn get_mut(&mut self, name: &str) -> Option<&mut dyn FileSystemEntity> {
         if self.common_props.name == name {
             Some(self)
         } else {
@@ -104,7 +104,7 @@ impl FileSystemEntity for Folder<'_> {
         println!("deleted folder {}", self.common_props.name);
     }
 
-    fn delete_id(&mut self, id: usize) -> Result<usize, String>
+    fn delete_id(&mut self, id: usize) -> Result<usize, &str>
     {
         let mut item_to_remove : Option<usize> = None; 
         for (pos, item) in self.children.iter_mut().enumerate() {
@@ -120,10 +120,10 @@ impl FileSystemEntity for Folder<'_> {
             return Ok(id);
         }
 
-        Err("Not found".to_string())
+        Err("Not found")
     }
 
-    fn to_string(&self) -> String{
+    fn to_string(&self) -> String {
         let mut s = format!("{{ {:?}:", self.common_props.name);
         for item in &self.children {
             s.push_str(&format!(" {}, ", item.to_string()));
@@ -133,7 +133,7 @@ impl FileSystemEntity for Folder<'_> {
     }
 
     fn name(&self) -> &str {
-        &self.common_props.name
+        self.common_props.name
     }
 
     fn id(&self) -> usize {
@@ -142,7 +142,7 @@ impl FileSystemEntity for Folder<'_> {
 }
 
 impl FileSystemEntity for SymbolicLink<'_> {
-    fn get(&self, name: String) -> Option<&dyn FileSystemEntity> {
+    fn get(&self, name: &str) -> Option<&dyn FileSystemEntity> {
         if self.common_props.name == name {
             Some(self)
         } else {
@@ -150,7 +150,7 @@ impl FileSystemEntity for SymbolicLink<'_> {
         }
     }
 
-    fn get_mut(&mut self, name: String) -> Option<&mut dyn FileSystemEntity> {
+    fn get_mut(&mut self, name: &str) -> Option<&mut dyn FileSystemEntity> {
         if self.common_props.name == name {
             Some(self)
         } else {
@@ -163,17 +163,15 @@ impl FileSystemEntity for SymbolicLink<'_> {
                  self.common_props.name, self.link.name());
     }
 
-    fn delete_id(&mut self, _: usize) -> Result<usize, String> {
-        Err("Unsupported!".to_string())
+    fn delete_id(&mut self, _: usize) -> Result<usize, &str> {
+        Err("Unsupported!")
     }
 
-    fn to_string(&self) -> String{
-        String::from(
-            format!("{:?} -> {:?}", 
-                    self.common_props.name, 
-                    self.link.name()
-                )
-        )
+    fn to_string(&self) -> String {
+        format!("{:?} -> {:?}", 
+                self.common_props.name, 
+                self.link.name()
+               )
     }
 
     fn name(&self) -> &str {
@@ -202,7 +200,7 @@ impl<'a> Folder<'a> {
 fn main() {
     let mut root =  Folder {
         common_props: FileSystemEntityProps {
-            name: String::from("/"), 
+            name: "/", 
             id: 1,
         },
         children: Vec::new() 
@@ -210,7 +208,7 @@ fn main() {
 
     let mut f = File {
         common_props: FileSystemEntityProps {
-            name: String::from("file1"),
+            name: "file1",
             id: 2,
         }
     };
@@ -218,14 +216,14 @@ fn main() {
 
     let mut fol2 = Folder {
         common_props: FileSystemEntityProps {
-            name: String::from("folder2/"),
+            name: "folder2/",
             id: 3,
         },
         children: Vec::new(),
     };
     let mut f2 = File {
         common_props: FileSystemEntityProps {
-            name: String::from("file2"),
+            name: "file2",
             id: 4,
         }
     };
@@ -234,13 +232,13 @@ fn main() {
 
     let mut f3 = File {
         common_props: FileSystemEntityProps {
-            name: String::from("file3"),
+            name: "file3",
             id: 5,
         }
     };
     let mut fol3 = Folder {
         common_props: FileSystemEntityProps {
-            name: String::from("folder3/"),
+            name: "folder3/",
             id: 6,
         },
         children: vec![&mut f3],
@@ -248,7 +246,7 @@ fn main() {
     root.add(&mut fol3);
     println!("root: {root:#?}");
 
-    if let Some(x) = root.get("file1".to_string()) {
+    if let Some(x) = root.get("file1") {
         println!("Found file1: {}", x.to_string());
     } else {
         println!("Unable to find file1!");
@@ -256,7 +254,7 @@ fn main() {
 
     // Test case #1
     // root.delete();
-    // if let Some(x) = root.get("file1".to_string()) {
+    // if let Some(x) = root.get("file1") {
     //     println!("Found file1: {}", x.to_string());
     // } else {
     //     println!("Unable to find file1!");
@@ -265,7 +263,7 @@ fn main() {
 
     // Test case #2
     // root.delete_id(6).unwrap();
-    // if let Some(x) = root.get("folder3/".to_string()) {
+    // if let Some(x) = root.get("folder3/" {
     //     println!("Found folder3/: {}", x.to_string());
     // } else {
     //     println!("Unable to find folder3!");
@@ -275,16 +273,16 @@ fn main() {
     // Test case #3
     // root.delete_id(2).unwrap();
     // if let Some(x) = root.get("file1".to_string()) {
-    //     println!("Found file1: {}", x.to_string());
+    //     println!("Found file1: {}", x);
     // } else {
     //     println!("Unable to find file1!");
     // }
     // println!("root: {root:#?}");
 
     // Test case #4
-    // if let Some(x) = root.get_mut("folder3/".to_string()) {
+    // if let Some(x) = root.get_mut("folder3/") {
     //     x.delete_id(5).unwrap();
-    //     if let Some(y) = x.get("file3".to_string()) {
+    //     if let Some(y) = x.get("file3") {
     //         println!("Found file3: {}", y.to_string());
     //     } else {
     //         println!("Unable to find file3!");
@@ -295,10 +293,10 @@ fn main() {
     // // Test case #5 (not completed yet)
     // let mut s1 = SymbolicLink {
     //     common_props: FileSystemEntityProps {
-    //         name: String::from("link1"),
+    //         name: "link1",
     //         id: 7,
     //     },
-    //     link: root.get("file1".to_string()).unwrap(),
+    //     link: root.get("file1").unwrap(),
     // };
     // root.add(&mut s1);
     // println!("root: {root:#?}");
